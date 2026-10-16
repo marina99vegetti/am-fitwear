@@ -1,0 +1,312 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AM FITWEAR | Vista sua força</title>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- AVISO SUPERIOR -->
+    <div class="announcement">
+        FRETE GRÁTIS EM COMPRAS ACIMA DE R$ 199 • DEMONSTRAÇÃO FICTÍCIA
+    </div>
+
+    <!-- CABEÇALHO -->
+    <header class="header">
+
+        <a class="brand" href="#inicio" style="text-decoration: none; color: inherit;">
+            <span class="am">AM</span>
+            FITWEAR
+            <span class="star">✦</span>
+        </a>
+
+        <nav class="nav">
+            <a href="#inicio">Início</a>
+            <a href="#produtos">Coleção</a>
+            <a href="#sobre">Nossa essência</a>
+        </nav>
+
+        <div class="head-actions">
+
+            <button
+                class="iconbtn"
+                aria-label="Pesquisar"
+                onclick="document.getElementById('search').focus()">
+                ⌕
+            </button>
+
+            <button
+                class="iconbtn"
+                aria-label="Carrinho"
+                onclick="openCart()">
+                ♧
+                <span class="count" id="count">0</span>
+            </button>
+
+        </div>
+    </header>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main>
+
+        <!-- BANNER INICIAL -->
+        <section class="hero" id="inicio">
+
+            <div class="hero-inner">
+
+                <div class="hero-copy">
+
+                    <div class="eyebrow">
+                        Movimento • Confiança • Você
+                    </div>
+
+                    <h1>
+                        Vista sua <em>força.</em><br>
+                        Viva seu ritmo.
+                    </h1>
+
+                    <p>
+                        Peças que acompanham seu movimento e celebram
+                        quem você é — dentro e fora do treino.
+                    </p>
+
+                    <button
+                        class="cta"
+                        onclick="document.getElementById('produtos').scrollIntoView({behavior: 'smooth'})">
+                        Descobrir coleção ↗
+                    </button>
+
+                </div>
+
+                <div class="hero-photo">
+                    <img
+                        src="img/produtos/imagem-01.jpg"
+                        alt="Look fitness rosa pink">
+                </div>
+
+            </div>
+        </section>
+
+        <!-- BENEFÍCIOS -->
+        <section class="trust">
+
+            <div>
+                <b>♡ Conforto em movimento</b>
+                Peças pensadas para acompanhar você
+            </div>
+
+            <div>
+                <b>✦ Seu estilo, sua força</b>
+                Cores para expressar sua energia
+            </div>
+
+            <div>
+                <b>↗ Compra demonstrativa</b>
+                Experimente o carrinho sem cobrança
+            </div>
+
+        </section>
+
+        <!-- VITRINE DE PRODUTOS -->
+        <section class="section" id="produtos">
+
+            <div class="section-top">
+
+                <div>
+
+                    <div class="eyebrow">
+                        Escolha seu próximo look
+                    </div>
+
+                    <h2>Favoritos da AM</h2>
+
+                    <div class="section-sub">
+                        Looks para treinar com confiança e estilo.
+                    </div>
+
+                </div>
+
+                <input
+                    type="text"
+                    id="search"
+                    class="search"
+                    placeholder="Buscar uma peça..."
+                    oninput="renderProducts()"
+                    aria-label="Buscar produtos">
+
+            </div>
+
+            <!-- FILTROS -->
+            <div class="filters">
+
+                <button
+                    class="filter active"
+                    data-cat="Todos"
+                    onclick="setFilter('Todos', this)">
+                    Todos
+                </button>
+
+                <button
+                    class="filter"
+                    data-cat="Conjuntos"
+                    onclick="setFilter('Conjuntos', this)">
+                    Conjuntos
+                </button>
+
+                <button
+                    class="filter"
+                    data-cat="Macaquinhos"
+                    onclick="setFilter('Macaquinhos', this)">
+                    Macaquinhos
+                </button>
+
+                <button
+                    class="filter"
+                    data-cat="Shorts"
+                    onclick="setFilter('Shorts', this)">
+                    Shorts
+                </button>
+
+            </div>
+
+            <!-- OS PRODUTOS SÃO INSERIDOS PELO JAVASCRIPT -->
+            <div class="grid" id="grid"></div>
+
+        </section>
+
+        <!-- FAIXA PROMOCIONAL -->
+        <section class="promo" id="sobre">
+
+            <div class="promo-inner">
+
+                <div>
+
+                    <div class="eyebrow" style="color: #ff9fcf;">
+                        AM FITWEAR
+                    </div>
+
+                    <h2>
+                        Seu treino. Sua energia. Sua versão.
+                    </h2>
+
+                    <p>
+                        Moda fitness para vestir sua confiança
+                        em cada movimento.
+                    </p>
+
+                </div>
+
+                <button
+                    class="cta"
+                    onclick="document.getElementById('produtos').scrollIntoView({behavior: 'smooth'})">
+                    Encontrar meu look ↗
+                </button>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- RODAPÉ -->
+    <footer class="footer">
+
+        <div class="footer-inner">
+
+            <div>
+
+                <div class="brand">
+                    <span class="am">AM</span>
+                    FITWEAR
+                    <span class="star">✦</span>
+                </div>
+
+                <p>Vista sua força, do seu jeito.</p>
+
+            </div>
+
+            <div>
+
+                <b style="font-size: 12px;">
+                    Atendimento
+                </b>
+
+                <p>
+                    Esta é uma loja demonstrativa.<br>
+                    Nenhum pedido ou pagamento real é realizado.
+                </p>
+
+            </div>
+
+            <div>
+
+                <small>
+                    © 2026 AM FITWEAR • PROJETO FICTÍCIO
+                </small>
+
+                <p>
+                    Preços e condições ilustrativos.
+                </p>
+
+            </div>
+
+        </div>
+    </footer>
+
+    <!-- PAINEL DO CARRINHO -->
+    <div
+        class="drawer-bg"
+        id="drawerbg"
+        onclick="if (event.target === this) closeCart()">
+
+        <aside class="drawer">
+
+            <div class="drawer-head">
+
+                <h2 style="font-size: 20px; margin: 0;">
+                    Sua sacola ♡
+                </h2>
+
+                <button
+                    class="close"
+                    onclick="closeCart()"
+                    aria-label="Fechar carrinho">
+                    ×
+                </button>
+
+            </div>
+
+            <div id="cartitems"></div>
+
+            <div
+                class="cart-bottom"
+                id="cartbottom">
+            </div>
+
+        </aside>
+    </div>
+
+    <!-- JANELA DE FINALIZAÇÃO DA COMPRA -->
+    <div
+        class="modal-bg"
+        id="modalbg"
+        onclick="if (event.target === this) closeCheckout()">
+
+        <div
+            class="modal"
+            id="modal">
+        </div>
+
+    </div>
+
+    <!-- ARQUIVO JAVASCRIPT -->
+    <script src="js/script.js" defer></script>
+
+</body>
+</html>
