@@ -2,12 +2,14 @@
 (() => {
   const url = window.AM_SUPABASE_URL;
   const key = window.AM_SUPABASE_ANON_KEY;
+
   const configured =
     url && key &&
     !url.includes('COLE_A_') &&
     !key.includes('COLE_A_');
 
   const $ = id => document.getElementById(id);
+
   const loginCard = $('loginCard');
   const adminPanel = $('adminPanel');
   const loginMessage = $('loginMessage');
@@ -15,108 +17,209 @@
 
   let client = null;
   let currentUser = null;
+  let isAdmin = false;
+  let authVersion = 0;
 
-  const money = n =>
-    Number(n || 0).toLocaleString('pt-BR', {
+  const money = value =>
+    Number(value || 0).toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     });
 
-  function msg(el, text, type = '') {
-    if (!el) return;
-    el.textContent = text;
-    el.className = 'message ' + type;
+  function msg(element, text, type = '') {
+    element.textContent = text;
+    element.className = 'message ' + type;
   }
 
-  function esc(v = '') {
-    return String(v).replace(/[&<>"']/g, c => ({
+  function esc(value = '') {
+    return String(value).replace(/[&<>"']/g, character => ({
       '&': '&amp;',
       '<': '&lt;',
       '>': '&gt;',
       '"': '&quot;',
       "'": '&#39;'
-    }[c]));
+    })[character]);
   }
 
-  function setReadOnlyMode(readOnly) {
-    const form = $('productForm');
-    if (form) form.classList.toggle('hidden', readOnly);
+  // Mantém o visual original e esconde os controles de edição
+  // para quem não é administrador.
+  function configureView() {
+    loginCard.classList.toggle('hidden', isAdmin);
+    adminPanel.classList.remove('hidden');
 
-    ['cancelEdit', 'logoutBtn'].forEach(id => {
-      const el = $(id);
-      if (el) el.classList.toggle('hidden', !currentUser);
-    });
+    $('productForm').classList.toggle('hidden', !isAdmin);
+    $('logoutBtn').classList.toggle('hidden', !isAdmin);
+
+    adminPanel.classList.toggle('public-view', !isAdmin);
+
+    const description = adminPanel.querySelector('.panel-head p');
+
+    if (description) {
+      description.textContent = isAdmin
+        ? 'Cadastre, altere preço, atualize foto ou remova itens.'
+        : 'Consulte os produtos, as fotos, os preços e a disponibilidade.';
+    }
+
+    const actionsHeader = adminPanel.querySelector('thead th:last-child');
+
+    if (actionsHeader) {
+      actionsHeader.classList.toggle('hidden', !isAdmin);
+    }
   }
 
-  function setLoggedIn(user) {
+  // Confere a permissão na tabela admins do Supabase.
+  async function checkAdmin(user) {
+    if (!user) return false;
+
+    const { data, error } = await client
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Não foi possível verificar a administração:', error);
+      return false;
+    }
+
+    return !!data;
+  }
+
+  async function setLoggedIn(user) {
+    const version = ++authVersion;
+
     currentUser = user || null;
+    isAdmin = false;
 
-    // O painel fica disponível mesmo sem login.
-    if (loginCard) loginCard.classList.toggle('hidden', true);
-    if (adminPanel) adminPanel.classList.remove('hidden');
+    if (currentUser) {
+      isAdmin = await checkAdmin(currentUser);
 
-    // Visitantes só consultam; usuários autenticados
-    // continuam sujeitos às permissões do Supabase.
-    setReadOnlyMode(!currentUser);
-    loadProducts();
+      // Impede uma verificação antiga de sobrescrever o estado atual.
+      if (version !== authVersion) return;
+
+      if (!isAdmin) {
+        msg(
+          loginMessage,
+          'Esta conta não possui permissão administrativa. O catálogo continua disponível para consulta.',
+          'error'
+        );
+      } else {
+        msg(loginMessage, '');
+      }
+    }
+
+    if (version !== authVersion) return;
+
+    configureView();
+    await loadProducts();
   }
+
+  // Estilo adicional somente para a visualização pública.
+  const publicStyle = document.createElement('style');
+  publicStyle.textContent = `
+    #adminPanel.public-view .product-form {
+      display: none !important;
+    }
+
+    #adminPanel.public-view .actions,
+    #adminPanel.public-view th:last-child,
+    #adminPanel.public-view td:last-child {
+      display: none !important;
+    }
+
+    #adminPanel.public-view .panel-head {
+      margin-bottom: 20px;
+    }
+  `;
+  document.head.appendChild(publicStyle);
 
   if (!configured || !window.supabase) {
     msg(
       loginMessage,
-      'Configure a URL e a chave pública em js/supabase-config.js.',
+      'Configure a URL e a chave pública em js/supabase-config.js antes de entrar.',
       'error'
     );
-    loadStaticError();
+
+    $('loginForm').querySelector('button').disabled = true;
     return;
   }
 
   client = window.supabase.createClient(url, key);
 
-  client.auth.getSession().then(({ data }) => {
+  // Mostra o catálogo público mesmo sem login.
+  adminPanel.classList.remove('hidden');
+  loginCard.classList.remove('hidden');
+  $('productForm').classList.add('hidden');
+  $('logoutBtn').classList.add('hidden');
+  adminPanel.classList.add('public-view');
+
+  const initialDescription = adminPanel.querySelector('.panel-head p');
+
+  if (initialDescription) {
+    initialDescription.textContent =
+      'Consulte os produtos, as fotos, os preços e a disponibilidade.';
+  }
+
+  const initialActionsHeader =
+    adminPanel.querySelector('thead th:last-child');
+
+  if (initialActionsHeader) {
+    initialActionsHeader.classList.add('hidden');
+  }
+
+  client.auth.onAuthStateChange((_event, session) => {
+    // Evita operações desnecessárias durante o evento de login.
+    setTimeout(() => {
+      setLoggedIn(session?.user || null);
+    }, 0);
+  });
+
+  client.auth.getSession().then(({ data, error }) => {
+    if (error) {
+      console.error('Erro ao verificar a sessão:', error);
+      setLoggedIn(null);
+      return;
+    }
+
     setLoggedIn(data.session?.user || null);
   });
 
-  client.auth.onAuthStateChange((_event, session) => {
-    setLoggedIn(session?.user || null);
+  $('loginForm').addEventListener('submit', async event => {
+    event.preventDefault();
+
+    msg(loginMessage, 'Verificando acesso...');
+
+    const { data, error } = await client.auth.signInWithPassword({
+      email: $('email').value.trim(),
+      password: $('password').value
+    });
+
+    if (error) {
+      msg(
+        loginMessage,
+        'Não foi possível entrar. Confira o e-mail, a senha e se a conta está confirmada.',
+        'error'
+      );
+      return;
+    }
+
+    await setLoggedIn(data.user);
   });
 
-  const loginForm = $('loginForm');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async e => {
-      e.preventDefault();
-      msg(loginMessage, 'Verificando acesso...');
+  $('logoutBtn').addEventListener('click', async () => {
+    const { error } = await client.auth.signOut();
 
-      const { data, error } = await client.auth.signInWithPassword({
-        email: $('email').value.trim(),
-        password: $('password').value
-      });
+    if (error) {
+      console.error(error);
+      alert('Não foi possível sair da conta.');
+      return;
+    }
 
-      if (error) {
-        msg(
-          loginMessage,
-          'Não foi possível entrar. Confira o e-mail e a senha.',
-          'error'
-        );
-        return;
-      }
-
-      setLoggedIn(data.user);
-      msg(loginMessage, 'Acesso realizado.', 'success');
-    });
-  }
-
-  const logoutBtn = $('logoutBtn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-      await client.auth.signOut();
-      setLoggedIn(null);
-    });
-  }
+    await setLoggedIn(null);
+  });
 
   async function loadProducts() {
     const body = $('productsTable');
-    if (!body || !client) return;
 
     body.innerHTML =
       '<tr><td colspan="6">Carregando produtos...</td></tr>';
@@ -129,81 +232,92 @@
     if (error) {
       body.innerHTML =
         '<tr><td colspan="6">Não foi possível carregar os produtos. Verifique as políticas de leitura do Supabase.</td></tr>';
+
       console.error(error);
       return;
     }
 
-    if (!data || !data.length) {
+    if (!data || data.length === 0) {
       body.innerHTML =
         '<tr><td colspan="6">Nenhum produto cadastrado ainda.</td></tr>';
       return;
     }
 
-    body.innerHTML = data.map(p => {
-      const actions = currentUser
-        ? `<div class="actions">
-             <button data-edit="${esc(p.id)}">Editar</button>
-             <button class="delete" data-delete="${esc(p.id)}">Excluir</button>
-           </div>`
-        : '<span>Somente consulta</span>';
+    body.innerHTML = data.map(product => {
+      const actions = isAdmin
+        ? `<td>
+             <div class="actions">
+               <button data-edit="${esc(product.id)}">Editar</button>
+               <button class="delete" data-delete="${esc(product.id)}">Excluir</button>
+             </div>
+           </td>`
+        : '';
 
-      return `<tr>
-        <td>${p.imagem_url
-          ? `<img src="${esc(p.imagem_url)}" alt="">`
-          : '—'}</td>
-        <td><strong>${esc(p.nome)}</strong><br>
-          <small>${esc(p.descricao || '')}</small></td>
-        <td>${esc(p.categoria || '—')}</td>
-        <td>${money(p.preco)}</td>
-        <td><span class="status ${p.disponivel ? '' : 'off'}">${
-          p.disponivel ? 'Disponível' : 'Oculto'
-        }</span></td>
-        <td>${actions}</td>
-      </tr>`;
+      return `
+        <tr>
+          <td>
+            ${
+              product.imagem_url
+                ? `<img src="${esc(product.imagem_url)}"
+                     alt="${esc(product.nome)}">`
+                : '—'
+            }
+          </td>
+          <td>
+            <strong>${esc(product.nome)}</strong><br>
+            <small>${esc(product.descricao || '')}</small>
+          </td>
+          <td>${esc(product.categoria || '—')}</td>
+          <td>${money(product.preco)}</td>
+          <td>
+            <span class="status ${product.disponivel ? '' : 'off'}">
+              ${product.disponivel ? 'Disponível' : 'Oculto'}
+            </span>
+          </td>
+          ${actions}
+        </tr>
+      `;
     }).join('');
 
-    if (currentUser) {
+    if (isAdmin) {
       body.querySelectorAll('[data-edit]').forEach(button => {
         button.addEventListener('click', () => {
           const product = data.find(
-            p => String(p.id) === button.dataset.edit
+            item => String(item.id) === button.dataset.edit
           );
-          if (product) editProduct(product);
+
+          if (product && isAdmin) editProduct(product);
         });
       });
 
       body.querySelectorAll('[data-delete]').forEach(button => {
         button.addEventListener('click', () => {
-          deleteProduct(button.dataset.delete);
+          if (isAdmin) deleteProduct(button.dataset.delete);
         });
       });
     }
   }
 
-  function loadStaticError() {
-    const body = $('productsTable');
-    if (body) {
-      body.innerHTML =
-        '<tr><td colspan="6">Configure o Supabase para consultar os produtos.</td></tr>';
-    }
-  }
+  function editProduct(product) {
+    if (!isAdmin) return;
 
-  function editProduct(p) {
-    if (!currentUser) return;
+    $('productId').value = product.id;
+    $('name').value = product.nome || '';
+    $('price').value = product.preco ?? '';
+    $('category').value = product.categoria || 'Conjuntos';
 
-    $('productId').value = p.id;
-    $('name').value = p.nome || '';
-    $('price').value = p.preco ?? '';
-    $('category').value = p.categoria || 'Conjuntos';
-    $('sizes').value = Array.isArray(p.tamanhos)
-      ? p.tamanhos.join(', ')
+    $('sizes').value = Array.isArray(product.tamanhos)
+      ? product.tamanhos.join(', ')
       : '';
-    $('description').value = p.descricao || '';
-    $('available').checked = !!p.disponivel;
+
+    $('description').value = product.descricao || '';
+    $('available').checked = !!product.disponivel;
     $('photo').value = '';
+
     $('saveBtn').textContent = 'Salvar alterações';
     $('cancelEdit').classList.remove('hidden');
-    formMessage.textContent = 'Editando: ' + p.nome;
+
+    msg(formMessage, 'Editando: ' + product.nome);
 
     window.scrollTo({
       top: $('productForm').getBoundingClientRect().top +
@@ -213,7 +327,6 @@
   }
 
   function resetForm() {
-    if (!$('productForm')) return;
     $('productForm').reset();
     $('productId').value = '';
     $('available').checked = true;
@@ -222,14 +335,14 @@
     msg(formMessage, '');
   }
 
-  const cancelEdit = $('cancelEdit');
-  if (cancelEdit) {
-    cancelEdit.addEventListener('click', resetForm);
-  }
+  $('cancelEdit').addEventListener('click', resetForm);
 
   async function uploadPhoto(file) {
-    if (!currentUser) throw new Error('Acesso somente para consulta.');
     if (!file) return null;
+
+    if (!isAdmin || !currentUser) {
+      throw new Error('Somente a administradora pode enviar fotos.');
+    }
 
     if (!file.type.startsWith('image/')) {
       throw new Error('Escolha um arquivo de imagem.');
@@ -239,8 +352,10 @@
       throw new Error('A imagem deve ter no máximo 5 MB.');
     }
 
-    const safeName = file.name.toLowerCase()
+    const safeName = file.name
+      .toLowerCase()
       .replace(/[^a-z0-9._-]+/g, '-');
+
     const path = `${currentUser.id}/${Date.now()}-${safeName}`;
 
     const { error } = await client.storage
@@ -252,84 +367,104 @@
 
     if (error) throw error;
 
-    return client.storage.from('produtos')
+    return client.storage
+      .from('produtos')
       .getPublicUrl(path).data.publicUrl;
   }
 
-  const productForm = $('productForm');
-  if (productForm) {
-    productForm.addEventListener('submit', async e => {
-      e.preventDefault();
+  $('productForm').addEventListener('submit', async event => {
+    event.preventDefault();
 
-      if (!currentUser) {
-        msg(formMessage, 'Modo somente consulta.', 'error');
-        return;
+    if (!isAdmin || !currentUser) {
+      msg(formMessage, 'Apenas a administradora pode modificar produtos.', 'error');
+      return;
+    }
+
+    const id = $('productId').value;
+
+    const payload = {
+      nome: $('name').value.trim(),
+      descricao: $('description').value.trim(),
+      preco: Number($('price').value),
+      categoria: $('category').value,
+      tamanhos: $('sizes').value
+        .split(',')
+        .map(size => size.trim())
+        .filter(Boolean),
+      disponivel: $('available').checked,
+      atualizado_em: new Date().toISOString()
+    };
+
+    if (
+      !payload.nome ||
+      !Number.isFinite(payload.preco) ||
+      payload.preco < 0
+    ) {
+      msg(formMessage, 'Informe um nome e um preço válido.', 'error');
+      return;
+    }
+
+    const file = $('photo').files[0];
+
+    $('saveBtn').disabled = true;
+    msg(formMessage, 'Salvando produto...');
+
+    try {
+      if (file) {
+        payload.imagem_url = await uploadPhoto(file);
       }
 
-      const id = $('productId').value;
-      const payload = {
-        nome: $('name').value.trim(),
-        descricao: $('description').value.trim(),
-        preco: Number($('price').value),
-        categoria: $('category').value,
-        tamanhos: $('sizes').value.split(',')
-          .map(s => s.trim()).filter(Boolean),
-        disponivel: $('available').checked,
-        atualizado_em: new Date().toISOString()
-      };
+      let result;
 
-      if (!payload.nome ||
-          !Number.isFinite(payload.preco) ||
-          payload.preco < 0) {
-        msg(formMessage, 'Informe um nome e um preço válido.', 'error');
-        return;
+      if (id) {
+        result = await client
+          .from('produtos')
+          .update(payload)
+          .eq('id', id);
+      } else {
+        if (!payload.imagem_url) payload.imagem_url = '';
+
+        result = await client
+          .from('produtos')
+          .insert(payload);
       }
 
-      const file = $('photo').files[0];
-      $('saveBtn').disabled = true;
-      msg(formMessage, 'Salvando produto...');
+      if (result.error) throw result.error;
 
-      try {
-        if (file) payload.imagem_url = await uploadPhoto(file);
+      msg(
+        formMessage,
+        id ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!',
+        'success'
+      );
 
-        let result;
-        if (id) {
-          result = await client.from('produtos')
-            .update(payload).eq('id', id);
-        } else {
-          if (!payload.imagem_url) payload.imagem_url = '';
-          result = await client.from('produtos').insert(payload);
-        }
+      resetForm();
+      await loadProducts();
+    } catch (error) {
+      console.error(error);
 
-        if (result.error) throw result.error;
-
-        msg(
-          formMessage,
-          id ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!',
-          'success'
-        );
-
-        resetForm();
-        await loadProducts();
-      } catch (err) {
-        console.error(err);
-        msg(
-          formMessage,
-          'Não foi possível salvar: ' + (err.message || 'verifique as permissões do Supabase.'),
-          'error'
-        );
-      } finally {
-        $('saveBtn').disabled = false;
-      }
-    });
-  }
+      msg(
+        formMessage,
+        'Não foi possível salvar: ' +
+          (error.message || 'verifique as permissões do Supabase.'),
+        'error'
+      );
+    } finally {
+      $('saveBtn').disabled = false;
+    }
+  });
 
   async function deleteProduct(id) {
-    if (!currentUser) return;
+    if (!isAdmin || !currentUser) {
+      alert('Apenas a administradora pode excluir produtos.');
+      return;
+    }
+
     if (!confirm('Deseja excluir este produto do catálogo?')) return;
 
     const { error } = await client
-      .from('produtos').delete().eq('id', id);
+      .from('produtos')
+      .delete()
+      .eq('id', id);
 
     if (error) {
       alert('Não foi possível excluir o produto. Verifique as permissões.');
