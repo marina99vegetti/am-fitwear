@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -21,10 +21,20 @@
     <!-- CABEÇALHO -->
     <header class="header">
 
-        <a class="brand" href="#inicio" style="text-decoration: none; color: inherit;">
+        <a class="brand" href="#inicio"
+            style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 8px;">
+
+            <img
+                src="img/logo-am-fitwear.jpg.png"
+                alt="Logo AM FITWEAR"
+                class="brand-logo"
+                style="width: 42px; height: 42px; object-fit: contain; display: block; flex-shrink: 0;"
+            >
+
             <span class="am">AM</span>
             FITWEAR
             <span class="star">✦</span>
+
         </a>
 
         <nav class="nav">
@@ -305,12 +315,11 @@
 
     </div>
 
-    <!-- ARQUIVO JAVASCRIPT -->
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> 
+    <!-- SUPABASE E JAVASCRIPT -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/script.js" defer></script>
 
-
 </body>
 </html>
+```

@@ -730,3 +730,36 @@ button {
         width: 100%;
     }
 }
+
+.logo-loja {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.logo-loja img {
+  width: 55px;
+  height: 55px;
+  object-fit: contain;
+}
+
+.logo-loja span {
+  font-weight: 700;
+  color: inherit;
+}
+
+.brand-logo {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.brand-logo {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    display: inline-block;
+    flex-shrink: 0;
+}
